@@ -17,16 +17,30 @@ func NewGrid(data [][]interface{}) (g Grid, ok bool) {
 	g.colHdr = make(map[string]int)
 	g.rowHdr = make(map[string]int)
 	for i, line := range data {
-		if key, ok := line[0].(string); ok {
+		if key, ok := line[0].(string); ok && i > 0 {
 			g.rowHdr[key] = i
 		}
 	}
 	for j, hdr := range data[0] {
-	 if key, ok := hdr.(string); ok {
+	 if key, ok := hdr.(string); ok && j > 0 {
 			g.colHdr[key] = j
 		}
 	}
 	return g, true
+}
+
+func (g Grid) ColHdr() (h map[string]int, ok bool) {
+	if g.data == nil {
+		return h, false
+	}
+	return g.colHdr, true
+}
+
+func (g Grid) RowHdr() (h map[string]int, ok bool) {
+	if g.data == nil {
+		return h, false
+	}
+	return g.rowHdr, true
 }
 
 func (g Grid) Value(rowHdrStr, colHdrStr string) (value interface{}, ok bool) {
