@@ -28,9 +28,12 @@ func (s Serial) Time() (time.Time) {
 }
 
 func (s Serial) Add(other Serial) (Serial) {
+/*
 	ns := other.Time().In(s.tz).Sub(TimeZero(s.tz)).Nanoseconds()
 	ms := float64(ns) / float64(1000)
 	return NewSerial(s.value + ms, s.tz)
+*/
+	return NewSerial(s.value + other.value, s.tz)
 }
 
 // Given a time in a FIXED zone (eg. PST) as the first param and a zone that has a 
