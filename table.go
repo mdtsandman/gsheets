@@ -55,6 +55,10 @@ func (tbl Table) Float64(row int, colHdrStr string) (value float64, ok bool) {
 }
 
 func (tbl Table) Serial(row int, colHdrStr string, tz *time.Location) (value Serial, ok bool) {
-	s, ok := tbl.Float64(row,colHdrStr)
-	return NewSerial(s,tz), ok
+	return NewSerial(tbl.Value(row,colHdrStr),tz)
+}
+
+func (tbl Table) AddRows(rows [][]interface{}) (Table) {
+	tbl.data = append(tbl.data, rows...)
+	return tbl
 }

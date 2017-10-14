@@ -76,6 +76,8 @@ func (g Grid) Float64(rowHdrStr, colHdrStr string) (value float64, ok bool) {
 }
 
 func (g Grid) Serial(rowHdrStr, colHdrStr string, tz *time.Location) (value Serial, ok bool) {
-	s, ok := g.Float64(rowHdrStr,colHdrStr)
-	return NewSerial(s, tz), ok
+	if tmp, ok := g.Value(rowHdrStr,colHdrStr); ok {
+		return NewSerial(tmp, tz)
+	}
+	return value, false
 }

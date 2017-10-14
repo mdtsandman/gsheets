@@ -13,10 +13,17 @@ type Serial struct {
 	tz *time.Location
 }
 
-func NewSerial(value float64, tz *time.Location) (s Serial) {
+func NewSerialFromFloat64(value float64, tz *time.Location) (s Serial) {
 	s.value = value
 	s.tz = tz
 	return s
+}
+
+func NewSerial(value interface{}, tz *time.Location) (s Serial, ok bool) {
+	if f64, ok := value.(float64); ok {
+		return NewSerialFromFloat64(f64, tz), ok
+	}
+	return s, false
 }
 
 func TimeZero(tz *time.Location) (time.Time) {
@@ -28,12 +35,12 @@ func (s Serial) Time() (time.Time) {
 }
 
 func (s Serial) Add(other Serial) (Serial) {
-/*
-	ns := other.Time().In(s.tz).Sub(TimeZero(s.tz)).Nanoseconds()
-	ms := float64(ns) / float64(1000)
-	return NewSerial(s.value + ms, s.tz)
-*/
-	return NewSerial(s.value + other.value, s.tz)
+	tmp, _ := NewSerial(s.value + other.value, s.tz)
+	return tmp
+}
+
+func (s Serial) IsValidTime() (bool) {
+	return s.value >= 0 && s.value < 1
 }
 
 // Given a time in a FIXED zone (eg. PST) as the first param and a zone that has a 
