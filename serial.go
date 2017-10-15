@@ -31,7 +31,7 @@ func SetSerialTime(d time.Time, ts interface{}) (t time.Time, ok bool) {
 	if f64, ok := ts.(float64); ok && f64 >= 0 && f64 < 1 {
 		return midnight(d).Add(time.Duration(f64*24*60*60)*time.Second).Round(time.Second), true
 	}
-	return t, true
+	return t, false
 }
 
 func DSAdj(timeInFixedZone time.Time, variableZone *time.Location) (time.Time) {
