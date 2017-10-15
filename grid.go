@@ -1,9 +1,5 @@
 package gsheets
 
-import (
-	"time"
-)
-
 type Grid struct {
 	colHdr, rowHdr map[string]int
 	data [][]interface{}
@@ -73,11 +69,4 @@ func (g Grid) Float64(rowHdrStr, colHdrStr string) (value float64, ok bool) {
 		}
 	}
 	return float64(0), true
-}
-
-func (g Grid) Serial(rowHdrStr, colHdrStr string, tz *time.Location) (value Serial, ok bool) {
-	if tmp, ok := g.Value(rowHdrStr,colHdrStr); ok {
-		return NewSerial(tmp, tz)
-	}
-	return value, false
 }

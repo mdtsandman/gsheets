@@ -1,9 +1,5 @@
 package gsheets
 
-import (
-	"time"
-)
-
 type Table struct {
 	colHdr map[string]int
 	data [][]interface{}
@@ -52,10 +48,6 @@ func (tbl Table) Float64(row int, colHdrStr string) (value float64, ok bool) {
 		}
 	}
 	return float64(0), true
-}
-
-func (tbl Table) Serial(row int, colHdrStr string, tz *time.Location) (value Serial, ok bool) {
-	return NewSerial(tbl.Value(row,colHdrStr),tz)
 }
 
 func (tbl Table) AddRows(rows [][]interface{}) (Table) {
