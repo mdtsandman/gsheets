@@ -19,6 +19,10 @@ func NewTable(data [][]interface{}) (tbl Table) {
 	return tbl
 }
 
+func (tbl Table) NumRows() (int) {
+	return len(tbl.data)
+}
+
 func (tbl Table) Value(row int, colHdrStr string) (value interface{}) {
 	if row < 0 || row >= len(tbl.data) {
 		return nil

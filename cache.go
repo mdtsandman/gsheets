@@ -25,13 +25,13 @@ func NewMeta(ssid, rngStr string) (meta Meta) {
 
 type Cache struct{
 	meta map[string]Meta
-	data map[string]Grid
+	data map[string][][]interface{}
 	mtx sync.Mutex
 }
 
 func NewCache() (cache Cache) {
 	cache.meta = make(map[string]Meta)
-	cache.data = make(map[string]Grid)
+	cache.data = make(map[string][][]interface{})
 	return cache
 }
 
@@ -41,22 +41,22 @@ func (sc Cache) SetMeta(resource string, meta Meta) {
 	sc.meta[resource] = meta
 }
 
-func (sc Cache) Fetch(srv *sheets.Service, resource string) (g Grid, cached bool, err error) {
+func (sc Cache) Fetch(srv *sheets.Service, resource string) (data [][]interface{}, err error) {
 	sc.mtx.Lock()
 	defer sc.mtx.Unlock()
 	meta := sc.meta[resource]
 	if meta.ok {
 		fmt.Printf("Using cached data for %s\n", meta.rngStr)
-		return sc.data[resource], true, nil
+		return sc.data[resource], nil
 	}
 	fmt.Printf("No cached data found for %s\nFetching from spreadsheet via REST API\n", meta.rngStr)
 	req := srv.Spreadsheets.Values.Get(meta.ssid, meta.rngStr)
 	resp, err := req.ValueRenderOption("UNFORMATTED_VALUE").DateTimeRenderOption("SERIAL_NUMBER").Do()
 	if err != nil {
-		return g, false, err
+		return data, err
 	}
-	sc.data[resource] = NewGrid(resp.Values)
+	sc.data[resource] = resp.Values
 	meta.ok = true
 	sc.meta[resource] = meta
-	return sc.data[resource], false, nil
+	return sc.data[resource], nil
 }
