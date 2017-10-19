@@ -3,6 +3,7 @@ package gsheets
 import (
 	"fmt"
 	"sync"
+	"errors"
 )
 
 import (
@@ -52,15 +53,18 @@ func (c Cache) SetMeta(resource string, meta Meta) (cache Cache) {
 	return cache
 }
 
-func (c Cache) Fetch(srv *sheets.Service, resource string) (data [][]interface{}, err error) {
+func (c Cache) Fetch(srv *sheets.Service, resource string, force bool) (data [][]interface{}, err error) {
 	c.mtx.Lock()
 	defer c.mtx.Unlock()
-	meta := c.meta[resource]
-	if meta.ok {
-		fmt.Printf("Using cached data for %s\n", meta.rngStr)
+	meta, exists := c.meta[resource]
+	if (!exists) {
+		return data, errors.New(fmt.Sprintf("Attempt to fetch resource [%s], which is not registered in the cache.",resource))
+	}
+	if !force && meta.ok {
+		fmt.Printf("Using cached data for resource [%s]\n", meta.rngStr)
 		return c.data[resource], nil
 	}
-	fmt.Printf("No cached data found for %s\nFetching from spreadsheet via REST API\n", meta.rngStr)
+	fmt.Printf("Fetching resource [%s] from spreadsheet via REST API\n", meta.rngStr)
 	req := srv.Spreadsheets.Values.Get(meta.ssid, meta.rngStr)
 	resp, err := req.ValueRenderOption("UNFORMATTED_VALUE").DateTimeRenderOption("SERIAL_NUMBER").Do()
 	if err != nil {
