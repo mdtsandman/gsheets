@@ -35,19 +35,30 @@ func NewCache() (cache Cache) {
 	return cache
 }
 
-func (sc Cache) SetMeta(resource string, meta Meta) {
-	sc.mtx.Lock()
-	defer sc.mtx.Unlock()
-	sc.meta[resource] = meta
+func (c Cache) SetChangedFlag(resource string) (cache Cache) {
+	c.mtx.Lock()
+	defer c.mtx.Unlock()
+	if meta, exists := c.meta[resource]; exists {
+		meta.ok = false
+		c.meta[resource] = meta
+	}
+	return cache
 }
 
-func (sc Cache) Fetch(srv *sheets.Service, resource string) (data [][]interface{}, err error) {
-	sc.mtx.Lock()
-	defer sc.mtx.Unlock()
-	meta := sc.meta[resource]
+func (c Cache) SetMeta(resource string, meta Meta) (cache Cache) {
+	c.mtx.Lock()
+	defer c.mtx.Unlock()
+	c.meta[resource] = meta
+	return cache
+}
+
+func (c Cache) Fetch(srv *sheets.Service, resource string) (data [][]interface{}, err error) {
+	c.mtx.Lock()
+	defer c.mtx.Unlock()
+	meta := c.meta[resource]
 	if meta.ok {
 		fmt.Printf("Using cached data for %s\n", meta.rngStr)
-		return sc.data[resource], nil
+		return c.data[resource], nil
 	}
 	fmt.Printf("No cached data found for %s\nFetching from spreadsheet via REST API\n", meta.rngStr)
 	req := srv.Spreadsheets.Values.Get(meta.ssid, meta.rngStr)
@@ -55,8 +66,8 @@ func (sc Cache) Fetch(srv *sheets.Service, resource string) (data [][]interface{
 	if err != nil {
 		return data, err
 	}
-	sc.data[resource] = resp.Values
+	c.data[resource] = resp.Values
 	meta.ok = true
-	sc.meta[resource] = meta
-	return sc.data[resource], nil
+	c.meta[resource] = meta
+	return c.data[resource], nil
 }
