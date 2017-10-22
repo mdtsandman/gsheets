@@ -19,19 +19,19 @@ func SerialTimeZero(tz *time.Location) (time.Time) {
 	return time.Date(1899,12,30,0,0,0,0,tz)
 }
 
-func FromSerialDate(ds interface{}, sheetZone *time.Location) (t time.Time, ok bool) {
-	if f64, ok := ds.(float64); ok && f64 >= 0 {
-		serial := SerialTimeZero(sheetZone).Add(time.Duration(f64*60*60*24)*time.Second).Round(time.Second)
-		return DSAdj(serial, DSZone), true
+func FromSerialDateTime(serialDateTime interface{}, sheetZone *time.Location, round time.Duration) (result time.Time, ok bool) {
+	if f64, ok := serialDateTime.(float64); ok && f64 >= 0 {
+		result := SerialTimeZero(sheetZone).Add(time.Duration(f64*24)*time.Hour).Round(round)
+		return DSAdj(result, DSZone), true
 	}
-	return t, false
+	return result, false
 }
 
-func SetSerialTime(d time.Time, ts interface{}) (t time.Time, ok bool) {
-	if f64, ok := ts.(float64); ok && f64 >= 0 && f64 < 1 {
-		return midnight(d).Add(time.Duration(f64*24*60*60)*time.Second).Round(time.Second), true
+func SetSerialTime(dateTime time.Time, serialTime interface{}, round time.Duration) (result time.Time, ok bool) {
+	if f64, ok := serialTime.(float64); ok && f64 >= 0 && f64 < 1 {
+		return midnight(dateTime).Add(time.Duration(f64*24)*time.Hour).Round(round), true
 	}
-	return t, false
+	return dateTime, false
 }
 
 func DSAdj(timeInFixedZone time.Time, variableZone *time.Location) (time.Time) {

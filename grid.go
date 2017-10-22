@@ -11,8 +11,6 @@ type Grid struct {
 }
 
 func NewGrid(data [][]interface{}) (g Grid) {
-	g.mtx.Lock()
-	defer g.mtx.Unlock()
 	g.data = data
 	g.colHdr = make(map[string]int)
 	g.rowHdr = make(map[string]int)
@@ -41,14 +39,10 @@ func (g Grid) value(rowHdrStr, colHdrStr string) (value interface{}, found bool)
 }
 
 func (g Grid) Interface(rowHdrStr, colHdrStr string) (value interface{}, found bool) {
-	g.mtx.Lock()
-	defer g.mtx.Unlock()
 	return g.value(rowHdrStr, colHdrStr)
 }
 
 func (g Grid) String(rowHdrStr, colHdrStr string) (value string, found bool) {
-	g.mtx.Lock()
-	defer g.mtx.Unlock()
 	if tmp, ok := g.value(rowHdrStr, colHdrStr); ok {
 		if value, ok := tmp.(string); ok {
 			return value, true
@@ -58,8 +52,6 @@ func (g Grid) String(rowHdrStr, colHdrStr string) (value string, found bool) {
 }
 
 func (g Grid) Float64(rowHdrStr, colHdrStr string) (value float64, found bool) {
-	g.mtx.Lock()
-	defer g.mtx.Unlock()
 	if tmp, found := g.value(rowHdrStr, colHdrStr); found {
 		if value, found := tmp.(float64); found {
 			return value, true
@@ -69,11 +61,19 @@ func (g Grid) Float64(rowHdrStr, colHdrStr string) (value float64, found bool) {
 }
 
 func (g Grid) RowTags() ([]string) {
-	g.mtx.Lock()
-	defer g.mtx.Unlock()
 	var tags []string
 	for _, row := range g.data {
 		if str, ok := row[0].(string); ok {
+			tags = append(tags,str)
+		}
+	}
+	return tags
+}
+
+func (g Grid) ColTags() ([]string) {
+	var tags []string
+	for _, row := range g.data[0] {
+		if str, ok := row.(string); ok {
 			tags = append(tags,str)
 		}
 	}
