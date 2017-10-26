@@ -1,7 +1,6 @@
 package gsheets
 
 import (
-	"log"
 	"sync"
 )
 
