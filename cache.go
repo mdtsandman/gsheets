@@ -36,14 +36,14 @@ func NewCache(srv *sheets.Service) (c Cache) {
 	return c
 }
 
-func (Cache) Register(resource, ssid, rng string) (c Cache) {
+func (c Cache) Register(resource, ssid, rng string) {
 	c.mtx.Lock()
 	defer c.mtx.Unlock()
 	_, registered := c.resources[resource]
 	if !registered {
 		c.resources[resource] = NewResource(ssid, rng)
 	}
-	return c
+	return
 }
 
 func (c Cache) fetch(r *Resource) (err error) {
