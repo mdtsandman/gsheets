@@ -1,4 +1,4 @@
-package gsheets
+iackage gsheets
 
 import (
 	"fmt"
@@ -10,38 +10,55 @@ import (
 	"google.golang.org/api/sheets/v4"
 )
 
-type Resource struct {
-	data [][]interface{}
-	stale bool
-	ssid, sheet, rng string
+type Sheet interface {
+	func Stale() bool
+	func 
 }
 
-func NewResource(ssid, rng string) (r *Resource) {
-	r = new(Resource)
-	r.ssid = ssid
-	r.rng = rng
-	r.stale = true
-	return r
+type Table struct {
+	stale bool
+	ssid, sheet, rng string
+	data [][]interface{}
+	cols map[string]int
+}
+
+type Grid struct {
+	Table
+	rows map[string]*[]interface{}
+}
+
+func (g *Grid) buildMap() {
+	g.rows := make(map[string]*[]interface)
+	for _, row := range g.data {
+		g.rows[row[0]] = &row
+	}
+}
+
+func (g *Grid) Find(tag string) (row []interface, found bool) {
+	row, found = rows[tag]
+	return row, found
 }
 
 type Cache struct {
-	resources map[string](*Resource)
+	tables map[string](*Table)
+	grids map[string](*Grid)
 	srv *sheets.Service
 	mtx sync.Mutex
 }
 
 func NewCache(srv *sheets.Service) (c Cache) {
-	c.resources = make(map[string](*Resource))
+	c.tables = make(map[string]*Table)
+	c.grids = make(map[string]*Grid)
 	c.srv = srv
 	return c
 }
 
-func (c Cache) Register(resource, ssid, rng string) {
+func (c Cache) Register(t *Table) {
 	c.mtx.Lock()
 	defer c.mtx.Unlock()
-	_, registered := c.resources[resource]
+	_, registered := c.tables[t.sheet]
 	if !registered {
-		c.resources[resource] = NewResource(ssid, rng)
+		t.tables[t] = NewResource(ssid, rng)
 	}
 	return
 }
