@@ -36,6 +36,14 @@ func Midnight(t time.Time) (time.Time) {
 	return time.Date(t.Year(),t.Month(),t.Day(),0,0,0,0,t.Location())
 }
 
+func Monday(t time.Time) (time.Time) {
+	offset := int(t.Weekday()) - 1 // week begins on Monday
+	if (offset < 0) {
+		offset = 6
+	}
+	return t.AddDate(0,0,0-offset)
+}
+
 func SerialTimeZero() (time.Time) {
 	return time.Date(1899,12,30,0,0,0,0,FixedZone)
 }
