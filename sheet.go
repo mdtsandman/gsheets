@@ -11,7 +11,6 @@ import (
 	"google.golang.org/api/sheets/v4"
 )
 
-
 type lines [][]interface{}
 func (list lines) Len() int { return len(list) }
 func (list lines) Swap(i,j int) { list[i], list[j] = list[j], list[i] }
@@ -32,7 +31,6 @@ func (list lines) Less(i,j int) bool {
 	}
 }
 
-
 type Sheet struct {
 	srv *sheets.Service
 	stale bool
@@ -41,8 +39,8 @@ type Sheet struct {
 	rows lines
 }
 
-func NewSheet(srv *sheets.Service, ssid, sheet, rng string) (Sheet) {
-	return Sheet{	srv, true, ssid, sheet, rng, nil, nil }
+func NewSheet(srv *sheets.Service, ssid, sheet, rng string) (*Sheet) {
+	return &Sheet{	srv, true, ssid, sheet, rng, nil, nil }
 }
 
 func (s Sheet) Name() string {
@@ -97,17 +95,14 @@ func (s Sheet) Rows(startTag, endTag interface{}) (rows [][]interface{}, found b
 			return x + 1
 		default:
 			x := fmt.Sprintf("%s",tag)
-			return x + "a"
+			return x + "1"
 		}
 	}
 
+	nextTag := next(endTag)
 	first := sort.Search(len(s.rows), searchFxn(s.rows, startTag))
-	last := sort.Search(len(s.rows), searchFxn(s.rows, next(endTag)))
-
+	last := sort.Search(len(s.rows), searchFxn(s.rows, nextTag))
 	result := s.rows[first:last]
-
-	fmt.Printf("StartTag: %s | EndTag: %s | First: %d | Last: %d\n", startTag, next(endTag), first, last)
-
 	return result, len(result) > 0
 
 }
@@ -125,10 +120,14 @@ func (s *Sheet) Refresh() (e error) {
 		return err
 	}
 	if len(resp.Values) == 0 {
-		return errors.New(fmt.Sprintf("Unable to refrsh sheet [%s]: No header row found", s.sheet))
+		return errors.New(fmt.Sprintf("Unable to refresh sheet [%s]: No header row found", s.sheet))
 	}
-	s.rows = resp.Values
-	s.cols = NewHdr(s.rows[0])
+	s.cols = NewHdr(resp.Values[0])
+	if len(resp.Values) > 1 {
+		s.rows = lines(resp.Values[1:])
+	} else {
+		s.rows = nil
+	}
 	sort.Sort(s.rows)
 	s.stale = false
 	return nil

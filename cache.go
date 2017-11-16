@@ -7,23 +7,23 @@ import (
 )
 
 type Cache struct {
-	sheets map[string]Sheet
+	sheets map[string]*Sheet
 	mtx sync.Mutex
 }
 
 func NewCache() (c Cache) {
-	c.sheets = make(map[string]Sheet)
+	c.sheets = make(map[string]*Sheet)
 	return c
 }
 
-func (c Cache) Register(s Sheet) {
+func (c Cache) Register(s *Sheet) {
 	c.mtx.Lock()
 	defer c.mtx.Unlock()
 	c.sheets[s.Name()] = s
 	return
 }
 
-func (c Cache) Get(name string) (s Sheet, err error) {
+func (c Cache) Get(name string) (s *Sheet, err error) {
 	c.mtx.Lock()
 	defer c.mtx.Unlock()
 	s, registered := c.sheets[name]
