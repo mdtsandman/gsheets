@@ -12,194 +12,124 @@ import (
 )
 
 
-// Sheet interface
-
-type Sheet interface {
-	Name() string
-	Stale() bool
-	SetStale(state bool)
-	Header() *Hdr
-	Refresh() error
+type lines [][]interface{}
+func (list lines) Len() int { return len(list) }
+func (list lines) Swap(i,j int) { list[i], list[j] = list[j], list[i] }
+func (list lines) Less(i,j int) bool {
+	switch list[i][0].(type) {
+	case time.Time:
+		t1, _ := list[i][0].(time.Time)
+		t2, _ := list[j][0].(time.Time)
+		return t1.Before(t2)
+	case float64:
+		f1, _ := list[i][0].(float64)
+		f2, _ := list[j][0].(float64)
+		return f1 < f2
+	default:
+		s1 := fmt.Sprintf("%s",list[i][0])
+		s2 := fmt.Sprintf("%s",list[j][0])
+		return s1 < s2
+	}
 }
 
 
-// Sheet struct
-
-type Base struct {
+type Sheet struct {
 	srv *sheets.Service
 	stale bool
 	ssid, sheet, rng string
 	cols *Hdr
+	rows lines
 }
 
-func (s Base) Name() string {
+func NewSheet(srv *sheets.Service, ssid, sheet, rng string) (Sheet) {
+	return Sheet{	srv, true, ssid, sheet, rng, nil, nil }
+}
+
+func (s Sheet) Name() string {
 	return s.sheet
 }
 
-func (s Base) Stale() bool {
+func (s Sheet) Stale() bool {
 	return s.stale
 }
 
-func (s *Base) SetStale(state bool) {
-	s.stale = state;
-}
-
-func (s Base) Header() (*Hdr) {
+func (s Sheet) Header() (*Hdr) {
 	return s.cols
 }
 
-
-// StrTagSheet struct
-
-type StrTagSheet struct {
-	Base
-	rows map[string][][]interface{}
+func (s Sheet) AllRows() (rows [][]interface{}) {
+	return s.rows
 }
 
-func NewStrTagSheet(srv *sheets.Service, ssid, sheet, rng string) (*StrTagSheet) {
-	base := Base{srv, true, ssid, sheet, rng, nil}
-	return &StrTagSheet{base, nil}
-}
+func (s Sheet) Rows(startTag, endTag interface{}) (rows [][]interface{}, found bool) {
 
-func (s StrTagSheet) AllRows() (rows [][]interface{}) {
-	for _, value := range s.rows {
-		rows = append(rows, value...)
-	}
-	return rows
-}
-
-func (s StrTagSheet) FindRows(tag string) (rows [][]interface{}, ok bool) {
-	rows, found := s.rows[tag]
-	return rows, found
-}
-
-func (s *StrTagSheet) Refresh() (e error) {
-	rngStr := s.sheet + "!" + s.rng
-	fmt.Printf("Updating %s in cache\n", rngStr)
-	req := s.srv.Spreadsheets.Values.Get(s.ssid, s.sheet + "!" + s.rng)
-	resp, err := req.ValueRenderOption("UNFORMATTED_VALUE").DateTimeRenderOption("SERIAL_NUMBER").Do()
-	if err != nil {
-		return err
-	}
-	data := resp.Values
-	s.cols = NewHdr(data[0])
-	s.rows = make(map[string][][]interface{})
-	if len(data) > 1 {
-		for i, row := range data[1:] {
-			rawTag := row[0]
-			str, ok := rawTag.(string)
-			if !ok {
-				return errors.New( fmt.Sprintf(
-					"Unable to convert value in row 0 of column %d of sheet %s to a string: %s",
-					i,
-					s.sheet,
-					rawTag,
-				) )
+	searchFxn := func(data lines, tag interface{}) (func(int) bool) {
+		switch tag.(type) {
+		case time.Time:
+			x, _ := tag.(time.Time)
+			return func(i int) bool {
+				serial, _ := data[i][0].(float64)
+				y, _ := DateTimeFromSerial(serial)
+				return !(y.Before(x))
 			}
-			s.rows[str] = append(s.rows[str], row)
-		}
-	}
-	s.stale = false
-	return nil
-}
-
-
-// DateTimeTagSheet struct
-
-type DateTimeTagSheet struct {
-	Base
-	rows map[float64][][]interface{}
-}
-
-func NewDateTimeTagSheet(srv *sheets.Service, ssid, sheet, rng string) (*DateTimeTagSheet) {
-	base := Base{srv, true, ssid, sheet, rng, nil}
-	return &DateTimeTagSheet{base, nil}
-}
-
-func (s *DateTimeTagSheet) FindRows(start, end time.Time) (rows [][]interface{}, ok bool) {
-	sStart := float64(start.Sub(SerialTimeZero()).Hours()/24)
-	sEnd := float64(end.Sub(SerialTimeZero()).Hours()/24)
-	var keys sort.Float64Slice
-	for key, _ := range s.rows {
-		keys = append(keys, key)
-	}
-	sort.Sort(keys)
-	for _, key := range keys {
-		if key >= sStart && key <= sEnd {
-			rows = append(rows, s.rows[key]...)
-		}
-	}
-	return rows, len(rows) > 0
-}
-
-func (s *DateTimeTagSheet) Refresh() (e error) {
-	rngStr := s.sheet + "!" + s.rng
-	fmt.Printf("Updating %s in cache\n", rngStr)
-	req := s.srv.Spreadsheets.Values.Get(s.ssid, s.sheet + "!" + s.rng)
-	resp, err := req.ValueRenderOption("UNFORMATTED_VALUE").DateTimeRenderOption("SERIAL_NUMBER").Do()
-	if err != nil {
-		return err
-	}
-	data := resp.Values
-	s.cols = NewHdr(data[0])
-	s.rows = make(map[float64][][]interface{})
-	if len(data) > 1 {
-		for i, row := range data[1:] {
-			rawTag := row[0]
-			millisecs, ok := rawTag.(float64)
-			if !ok {
-				return errors.New( fmt.Sprintf(
-					"Unable to convert value in row 0 of column %d of sheet %s to a float64 value: %s",
-					i,
-					s.sheet,
-					millisecs,
-				) )
+		case float64:
+			x, _ := tag.(float64)
+			return func(i int) bool {
+				y, _ := data[i][0].(float64)
+				return y >= x
 			}
-			s.rows[millisecs] = append(s.rows[millisecs], row)
+		default:
+			x := fmt.Sprintf("%s",tag)
+			return func(i int) bool {
+				y := fmt.Sprintf("%s",data[i][0])
+				return y >= x
+			}
 		}
 	}
-	s.stale = false
-	return nil
-}
 
-
-// YearSheet
-
-type YearSheet struct {
-	Base
-	rows [][]interface{}
-}
-
-func NewYearSheet(srv *sheets.Service, ssid, sheet, rng string) (*YearSheet) {
-	base := Base{srv, true, ssid, sheet, rng, nil}
-	return &YearSheet{base, nil}
-}
-
-func (s YearSheet) Rows(start, end int) (rows [][]interface{}, e error) {
-	if start >= len(s.rows) || start < 0 {
-		return rows, errors.New( fmt.Sprintf(
-			"YearSheet.GetRows(start,end): Invalid parameter(s): start=%d, end=%d",
-			start,
-			end,
-		) )
+	next := func(tag interface{}) interface{} {
+		switch tag.(type) {
+		case time.Time:
+			x, _ := tag.(time.Time)
+			return x.Add(time.Nanosecond)
+		case float64:
+			x, _ := tag.(float64)
+			return x + 1
+		default:
+			x := fmt.Sprintf("%s",tag)
+			return x + "a"
+		}
 	}
-	if start >= end {
-		end = start + 1
-	}
-	slice := s.rows[start:end]
-	return slice, nil
+
+	first := sort.Search(len(s.rows), searchFxn(s.rows, startTag))
+	last := sort.Search(len(s.rows), searchFxn(s.rows, next(endTag)))
+
+	result := s.rows[first:last]
+
+	fmt.Printf("StartTag: %s | EndTag: %s | First: %d | Last: %d\n", startTag, next(endTag), first, last)
+
+	return result, len(result) > 0
+
 }
 
-func (s *YearSheet) Refresh() (e error) {
+func (s *Sheet) SetStale(state bool) {
+	s.stale = state;
+}
+
+func (s *Sheet) Refresh() (e error) {
 	rngStr := s.sheet + "!" + s.rng
 	fmt.Printf("Updating %s in cache\n", rngStr)
-	req := s.srv.Spreadsheets.Values.Get(s.ssid, s.sheet + "!" + s.rng)
+	req := s.srv.Spreadsheets.Values.Get(s.ssid, rngStr)
 	resp, err := req.ValueRenderOption("UNFORMATTED_VALUE").DateTimeRenderOption("SERIAL_NUMBER").Do()
 	if err != nil {
 		return err
+	}
+	if len(resp.Values) == 0 {
+		return errors.New(fmt.Sprintf("Unable to refrsh sheet [%s]: No header row found", s.sheet))
 	}
 	s.rows = resp.Values
 	s.cols = NewHdr(s.rows[0])
+	sort.Sort(s.rows)
 	s.stale = false
 	return nil
 }
