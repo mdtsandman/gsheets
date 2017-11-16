@@ -23,28 +23,28 @@ type Sheet interface {
 }
 
 
-// BaseSheet struct
+// Sheet struct
 
-type BaseSheet struct {
+type Base struct {
 	srv *sheets.Service
 	stale bool
 	ssid, sheet, rng string
 	cols *Hdr
 }
 
-func (s BaseSheet) Name() string {
+func (s Base) Name() string {
 	return s.sheet
 }
 
-func (s BaseSheet) Stale() bool {
+func (s Base) Stale() bool {
 	return s.stale
 }
 
-func (s BaseSheet) SetStale(state bool) {
+func (s *Base) SetStale(state bool) {
 	s.stale = state;
 }
 
-func (s BaseSheet) Header() (*Hdr) {
+func (s Base) Header() (*Hdr) {
 	return s.cols
 }
 
@@ -52,12 +52,12 @@ func (s BaseSheet) Header() (*Hdr) {
 // StrTagSheet struct
 
 type StrTagSheet struct {
-	BaseSheet
+	Base
 	rows map[string][][]interface{}
 }
 
 func NewStrTagSheet(srv *sheets.Service, ssid, sheet, rng string) (*StrTagSheet) {
-	base := BaseSheet{srv, true, ssid, sheet, rng, nil}
+	base := Base{srv, true, ssid, sheet, rng, nil}
 	return &StrTagSheet{base, nil}
 }
 
@@ -73,7 +73,7 @@ func (s StrTagSheet) FindRows(tag string) (rows [][]interface{}, ok bool) {
 	return rows, found
 }
 
-func (s StrTagSheet) Refresh() (e error) {
+func (s *StrTagSheet) Refresh() (e error) {
 	rngStr := s.sheet + "!" + s.rng
 	fmt.Printf("Updating %s in cache\n", rngStr)
 	req := s.srv.Spreadsheets.Values.Get(s.ssid, s.sheet + "!" + s.rng)
@@ -107,25 +107,18 @@ func (s StrTagSheet) Refresh() (e error) {
 // DateTimeTagSheet struct
 
 type DateTimeTagSheet struct {
-	BaseSheet
+	Base
 	rows map[float64][][]interface{}
 }
 
 func NewDateTimeTagSheet(srv *sheets.Service, ssid, sheet, rng string) (*DateTimeTagSheet) {
-	base := BaseSheet{srv, true, ssid, sheet, rng, nil}
+	base := Base{srv, true, ssid, sheet, rng, nil}
 	return &DateTimeTagSheet{base, nil}
 }
 
-/*
-type Int64s []int64
-func (i Int64s) Len() int { return len(i) }
-func (i Int64s) Swap(x,y int) { i[x], i[y] = i[y], i[x]}
-func (i Int64s) Less(x,y int) bool { return i[x] < i[y] }
-*/
-
-func (s DateTimeTagSheet) FindRows(start, end time.Time) (rows [][]interface{}, ok bool) {
-	sStart := float64(start.Sub(SerialTimeZero()).Nanoseconds()/1000)
-	sEnd := float64(end.Sub(SerialTimeZero()).Nanoseconds()/1000)
+func (s *DateTimeTagSheet) FindRows(start, end time.Time) (rows [][]interface{}, ok bool) {
+	sStart := float64(start.Sub(SerialTimeZero()).Hours()/24)
+	sEnd := float64(end.Sub(SerialTimeZero()).Hours()/24)
 	var keys sort.Float64Slice
 	for key, _ := range s.rows {
 		keys = append(keys, key)
@@ -139,7 +132,7 @@ func (s DateTimeTagSheet) FindRows(start, end time.Time) (rows [][]interface{}, 
 	return rows, len(rows) > 0
 }
 
-func (s DateTimeTagSheet) Refresh() (e error) {
+func (s *DateTimeTagSheet) Refresh() (e error) {
 	rngStr := s.sheet + "!" + s.rng
 	fmt.Printf("Updating %s in cache\n", rngStr)
 	req := s.srv.Spreadsheets.Values.Get(s.ssid, s.sheet + "!" + s.rng)
@@ -173,27 +166,31 @@ func (s DateTimeTagSheet) Refresh() (e error) {
 // YearSheet
 
 type YearSheet struct {
-	BaseSheet
+	Base
 	rows [][]interface{}
 }
 
 func NewYearSheet(srv *sheets.Service, ssid, sheet, rng string) (*YearSheet) {
-	base := BaseSheet{srv, true, ssid, sheet, rng, nil}
+	base := Base{srv, true, ssid, sheet, rng, nil}
 	return &YearSheet{base, nil}
 }
 
 func (s YearSheet) Rows(start, end int) (rows [][]interface{}, e error) {
-	if start > end || start >= len(rows) || start < 0 {
+	if start >= len(s.rows) || start < 0 {
 		return rows, errors.New( fmt.Sprintf(
 			"YearSheet.GetRows(start,end): Invalid parameter(s): start=%d, end=%d",
 			start,
 			end,
 		) )
 	}
-	return rows[start:end], nil
+	if start >= end {
+		end = start + 1
+	}
+	slice := s.rows[start:end]
+	return slice, nil
 }
 
-func (s YearSheet) Refresh() (e error) {
+func (s *YearSheet) Refresh() (e error) {
 	rngStr := s.sheet + "!" + s.rng
 	fmt.Printf("Updating %s in cache\n", rngStr)
 	req := s.srv.Spreadsheets.Values.Get(s.ssid, s.sheet + "!" + s.rng)
