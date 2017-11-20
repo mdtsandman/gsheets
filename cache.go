@@ -19,16 +19,16 @@ func NewCache() (c Cache) {
 func (c Cache) Register(s *Sheet) {
 	c.mtx.Lock()
 	defer c.mtx.Unlock()
-	c.sheets[s.Name()] = s
+	c.sheets[s.ssid + "-" + s.Name()] = s
 	return
 }
 
-func (c Cache) Get(name string) (s *Sheet, err error) {
+func (c Cache) Get(ssid, name string) (s *Sheet, err error) {
 	c.mtx.Lock()
 	defer c.mtx.Unlock()
-	s, registered := c.sheets[name]
+	s, registered := c.sheets[ssid + "-" + name]
 	if !registered {
-		return s, errors.New(fmt.Sprintf("Cache: Attempt to access unregistered table [%s]", name))
+		return s, errors.New(fmt.Sprintf("Cache: Attempt to access unregistered sheet [%s:%s]", ssid, name))
 	}
 	if s.Stale() {
 		err = s.Refresh()
@@ -37,23 +37,23 @@ func (c Cache) Get(name string) (s *Sheet, err error) {
 	return s, nil
 }
 
-func (c Cache) SetStaleFlag(name string) (err error) {
+func (c Cache) SetStaleFlag(ssid, name string) (err error) {
 	c.mtx.Lock()
 	defer c.mtx.Unlock()
-	s, registered := c.sheets[name]
+	s, registered := c.sheets[ssid + "-" + name]
 	if !registered {
-		return errors.New(fmt.Sprintf("Cache: Attempt to set stale flag on unregistered resource [%s]", name))
+		return errors.New(fmt.Sprintf("Cache: Attempt to set stale flag on unregistered sheet [%s:%s]", ssid, name))
 	}
 	s.SetStale(true)
 	return nil
 }
 
-func (c Cache) Refresh(name string) (err error) {
+func (c Cache) Refresh(ssid, name string) (err error) {
 	c.mtx.Lock()
 	defer c.mtx.Unlock()
-	s, registered := c.sheets[name]
+	s, registered := c.sheets[ssid + "-" + name]
 	if !registered {
-		return errors.New(fmt.Sprintf("Cache: Attempt to update unregistered resource [%s]", name))
+		return errors.New(fmt.Sprintf("Cache: Attempt to update unregistered sheet [%s:%s]", ssid, name))
 	}
 	return s.Refresh()
 }
