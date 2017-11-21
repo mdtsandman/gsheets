@@ -44,7 +44,7 @@ func NewSheet(srv *sheets.Service, ssid, sheet, rng string) (*Sheet) {
 }
 
 func (s Sheet) Name() string {
-	return s.sheet
+	return s.ssid + "-" + s.sheet
 }
 
 func (s Sheet) Stale() bool {
@@ -113,7 +113,7 @@ func (s *Sheet) SetStale(state bool) {
 
 func (s *Sheet) Refresh() (e error) {
 	rngStr := s.sheet + "!" + s.rng
-	fmt.Printf("Updating %s in cache\n", rngStr)
+	fmt.Printf("Updating %s-%s in cache\n", s.ssid, rngStr)
 	req := s.srv.Spreadsheets.Values.Get(s.ssid, rngStr)
 	resp, err := req.ValueRenderOption("UNFORMATTED_VALUE").DateTimeRenderOption("SERIAL_NUMBER").Do()
 	if err != nil {
