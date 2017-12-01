@@ -66,6 +66,9 @@ func (s Sheet) Rows(startTag, endTag interface{}) (rows [][]interface{}, found b
 		case time.Time:
 			x, _ := tag.(time.Time)
 			return func(i int) bool {
+				if len(data[i]) == 0 {
+					return true
+				}
 				serial, _ := data[i][0].(float64)
 				y, _ := DateTimeFromSerial(serial)
 				return !(y.Before(x))
@@ -73,36 +76,59 @@ func (s Sheet) Rows(startTag, endTag interface{}) (rows [][]interface{}, found b
 		case float64:
 			x, _ := tag.(float64)
 			return func(i int) bool {
+				if len(data[i]) == 0 {
+					return true
+				}
 				y, _ := data[i][0].(float64)
 				return y >= x
 			}
 		default:
 			x := fmt.Sprintf("%s",tag)
 			return func(i int) bool {
+				if len(data[i]) == 0 {
+					return true
+				}
 				y := fmt.Sprintf("%s",data[i][0])
 				return y >= x
 			}
 		}
 	}
 
-	next := func(tag interface{}) interface{} {
-		switch tag.(type) {
+	equal := func(a,b interface{}) (result bool) {
+		switch a.(type) {
 		case time.Time:
-			x, _ := tag.(time.Time)
-			return x.Add(time.Nanosecond)
+			x, _ := a.(time.Time)
+			if y, ok  := b.(time.Time); ok {
+				return y.Equal(x)
+			}
+			return false
 		case float64:
-			x, _ := tag.(float64)
-			return x + 1
+			x, _ := a.(float64)
+			if y, ok := b.(float64); ok {
+				return x == y
+			}
+			return false
 		default:
-			x := fmt.Sprintf("%s",tag)
-			return x + "1"
+			x := fmt.Sprintf("%s",a)
+			y := fmt.Sprintf("%s",b)
+			return x == y
 		}
 	}
 
-	nextTag := next(endTag)
 	first := sort.Search(len(s.rows), searchFxn(s.rows, startTag))
-	last := sort.Search(len(s.rows), searchFxn(s.rows, nextTag))
+	last := sort.Search(len(s.rows), searchFxn(s.rows, endTag))
+
+	last++ // include last element (a slice is a HALF-open range that does NOT include final element)
+
+	// scan for additional rows with tag == endTag
+	end := len(s.rows) - 1
+	for peek := last + 1; peek < end && len(s.rows[peek]) > 0 && equal(endTag, s.rows[peek][0]); peek++ {
+		last = peek;
+		fmt.Println("MORE\n")
+	}
+
 	result := s.rows[first:last]
+
 	return result, len(result) > 0
 
 }
