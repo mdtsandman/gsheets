@@ -94,14 +94,25 @@ func (s Sheet) Rows(startTag, endTag interface{}) (rows [][]interface{}, found b
 		}
 	}
 
-	first := sort.Search(len(s.rows), searchFxn(s.rows, startTag))
-	last := sort.Search(len(s.rows), searchFxn(s.rows, endTag))
+	end := len(s.rows)
+
+	first := sort.Search(end, searchFxn(s.rows, startTag))
+	if first == end {
+		return rows, false
+	}
+
+	last := sort.Search(end, searchFxn(s.rows, endTag))
 	if first > last {
 		return rows, false
 	}
+
+	if first == last {
+		return s.rows[first:last+1], true
+	}
+
 	result := s.rows[first:last]
 
-	return result, len(result) > 0
+	return result, true
 
 }
 
