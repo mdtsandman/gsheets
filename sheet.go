@@ -94,47 +94,19 @@ func (s Sheet) Rows(startTag, endTag interface{}) (rows [][]interface{}, found b
 		}
 	}
 
-	equal := func(a,b interface{}) (result bool) {
-		switch a.(type) {
-		case time.Time:
-			x, _ := a.(time.Time)
-			if y, ok  := b.(time.Time); ok {
-				return y.Equal(x)
-			}
-			return false
-		case float64:
-			x, _ := a.(float64)
-			if y, ok := b.(float64); ok {
-				return x == y
-			}
-			return false
-		default:
-			x := fmt.Sprintf("%s",a)
-			y := fmt.Sprintf("%s",b)
-			return x == y
-		}
-	}
-
 	first := sort.Search(len(s.rows), searchFxn(s.rows, startTag))
 	last := sort.Search(len(s.rows), searchFxn(s.rows, endTag))
-
-	last++ // include last element (a slice is a HALF-open range that does NOT include final element)
-
-	// scan for additional rows with tag == endTag
-	end := len(s.rows) - 1
-	for peek := last + 1; peek < end && len(s.rows[peek]) > 0 && equal(endTag, s.rows[peek][0]); peek++ {
-		last = peek;
-		fmt.Println("MORE\n")
+	if first > last {
+		return rows, false
 	}
-
 	result := s.rows[first:last]
 
 	return result, len(result) > 0
 
 }
 
-func (s *Sheet) SetStale(state bool) {
-	s.stale = state;
+func (s *Sheet) SetStale(stale bool) {
+	s.stale = stale;
 }
 
 func (s *Sheet) Refresh() (e error) {
