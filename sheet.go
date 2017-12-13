@@ -154,10 +154,10 @@ func (s Sheet) Rows(startTag, endTag interface{}) (rows [][]interface{}, found b
 	switch {
 	case first == end || (equal(startTag,endTag) && !present(s.rows,first,startTag)):
 		return rows, false
-	case present(s.rows,last,endTag):
-		return s.rows[first:last+1], true
-	default:
+	case last == end || !present(s.rows,last,endTag):
 		return s.rows[first:last], true
+	default:
+		return s.rows[first:last+1], true
 	}
 
 }
