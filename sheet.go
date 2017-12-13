@@ -64,55 +64,101 @@ func (s Sheet) Rows(startTag, endTag interface{}) (rows [][]interface{}, found b
 	searchFxn := func(data lines, tag interface{}) (func(int) bool) {
 		switch tag.(type) {
 		case time.Time:
-			x, _ := tag.(time.Time)
+			target, _ := tag.(time.Time)
 			return func(i int) bool {
 				if len(data[i]) == 0 {
-					return true
+					return false
 				}
 				serial, _ := data[i][0].(float64)
-				y, _ := DateTimeFromSerial(serial)
-				return !(y.Before(x))
+				element, _ := DateTimeFromSerial(serial)
+				return !element.Before(target)
 			}
 		case float64:
-			x, _ := tag.(float64)
+			target, _ := tag.(float64)
 			return func(i int) bool {
 				if len(data[i]) == 0 {
-					return true
+					return false
 				}
-				y, _ := data[i][0].(float64)
-				return y >= x
+				element, _ := data[i][0].(float64)
+				return element >= target
 			}
 		default:
-			x := fmt.Sprintf("%s",tag)
+			target := fmt.Sprintf("%s",tag)
 			return func(i int) bool {
 				if len(data[i]) == 0 {
-					return true
+					return false
 				}
-				y := fmt.Sprintf("%s",data[i][0])
-				return y >= x
+				element := fmt.Sprintf("%s",data[i][0])
+				return element >= target
 			}
 		}
 	}
 
+	present := func(data lines, i int, tag interface{}) (bool) {
+		switch tag.(type) {
+		case time.Time:
+			target, _ := tag.(time.Time)
+			if len(data[i]) == 0 {
+				return false
+			}
+			serial, _ := data[i][0].(float64)
+			element, _ := DateTimeFromSerial(serial)
+			return element.Equal(target)
+		case float64:
+			target, _ := tag.(float64)
+			if len(data[i]) == 0 {
+				return false
+			}
+			element, _ := data[i][0].(float64)
+			return element == target
+		default:
+			target := fmt.Sprintf("%s",tag)
+			if len(data[i]) == 0 {
+				return false
+			}
+			element := fmt.Sprintf("%s",data[i][0])
+			return element == target
+		}
+	}
+
+	equal := func(s,e interface{}) bool {
+		switch s.(type) {
+		case time.Time:
+			a, _ := s.(time.Time)
+			b, ok := e.(time.Time)
+			if !ok {
+				serial, ok := e.(float64)
+				if !ok {
+					return false
+				}
+				b, _ = DateTimeFromSerial(serial)
+			}
+			return a.Equal(b)
+		case float64:
+			a, _ := s.(float64)
+			if b, ok := e.(float64); ok {
+				return a == b
+			}
+			return false
+		default:
+			a := fmt.Sprintf("%s",s)
+			b := fmt.Sprintf("%s",e)
+			return a == b
+		}
+	}
+
 	end := len(s.rows)
-
 	first := sort.Search(end, searchFxn(s.rows, startTag))
-	if first == end {
-		return rows, false
-	}
-
 	last := sort.Search(end, searchFxn(s.rows, endTag))
-	if first > last {
+
+	switch {
+	case first == end || (equal(startTag,endTag) && !present(s.rows,first,startTag)):
 		return rows, false
-	}
-
-	if first == last {
+	case present(s.rows,last,endTag):
 		return s.rows[first:last+1], true
+	default:
+		return s.rows[first:last], true
 	}
-
-	result := s.rows[first:last]
-
-	return result, true
 
 }
 
